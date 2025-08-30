@@ -9,7 +9,11 @@ import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 dotenv.config();
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: ['https://muqueem.works.knothost.com'], // your frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
+}));
 app.use(express.json());
 
 connectDB();
