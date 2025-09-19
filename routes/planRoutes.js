@@ -5,8 +5,8 @@ const router = express.Router();
 
 router.get("/", getPlans);
 
-router.get("/:planId", getPlanById);
+router.post("/seed", seedPlans);
 
-router.get("/seed", seedPlans);
+router.get("/:planId", getPlanById);
 
 export default router;
