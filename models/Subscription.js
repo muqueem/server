@@ -3,35 +3,35 @@ import mongoose from "mongoose";
 const subscriptionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true
+    ref: "User", required: true
   },
-  planId: {
+  productId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Plan",
+    ref: "Product",
     required: true
   },
-  startDate: {
+  planName: {
+    type: String
+  }, // e.g. "Lifetime Plan" or "Annual Plan"
+  purchaseDate: {
+    type: Date,
+    default: Date.now
+  },
+  lifetime: {
+    type: Boolean,
+    default: true
+  },
+  supportEndDate: {
     type: Date,
     required: true
-  },
-  endDate: {
-    type: Date,
-    required: true
-  },
-  code: {
-    type: String,
-    required: true
-  },
+  }, // 3 months after purchase
   isActive: {
     type: Boolean,
     default: true
   },
-  status: {
-    type: String,
-    enum: ["active", "expired", "inactive"],
-    default: "active"
+  successToken: {
+    type: String
   }
-});
+}, { timestamps: true });
 
 export default mongoose.model("Subscription", subscriptionSchema);

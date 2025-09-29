@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
-import planRoutes from "./routes/planRoutes.js";
+import productRoutes from "./routes/productRoutes.js"
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 
 dotenv.config();
@@ -14,13 +14,14 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
+// app.use(cors());
 app.use(express.json());
 
 connectDB();
 
 
 app.use("/api/auth", authRoutes);
-app.use("/api/plans", planRoutes);
+app.use("/api/products", productRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 
 const PORT = process.env.PORT || 5000;

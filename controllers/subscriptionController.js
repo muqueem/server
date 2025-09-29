@@ -1,144 +1,123 @@
-import Subscription from "../models/Subscription.js";
-import Plan from "../models/Plan.js";
+// controllers/subscriptionController.js
 import crypto from "crypto";
+import Subscription from "../models/Subscription.js";
+import Product from "../models/Product.js";
 
-// Generate activation code
-const generateActivationCode = () => {
-    return crypto.randomBytes(8).toString("hex").toUpperCase();
-};
-
+// 💳 Purchase a product plan (lifetime + 3 months support)
 export const purchaseSubscription = async (req, res) => {
-    try {
-        const { planId } = req.body;
-        const userId = req.userId; // from authMiddleware
+  try {
+    const { productId, planName } = req.body; // planName now required
+    const userId = req.userId;
 
-        const existingSub = await Subscription.findOne({ userId, isActive: true }).populate("planId");
+    // 1. Find product
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ message: "Product not found" });
 
-        if (existingSub) {
-            const plan = existingSub.planId;
-            if (!plan) return res.status(400).json({ message: "Plan details missing for existing subscription" });
-
-            const activationCode = generateActivationCode();
-
-            let newStartDate = existingSub.startDate;
-            let newEndDate = existingSub.endDate;
-
-            if (new Date() > existingSub.endDate) {
-                newStartDate = new Date();
-                newEndDate = new Date();
-                newEndDate.setDate(newEndDate.getDate() + plan.durationDays);
-            } else {
-                newEndDate = new Date(existingSub.endDate);
-                newEndDate.setDate(newEndDate.getDate() + plan.durationDays);
-            }
-
-            existingSub.code = activationCode;
-            existingSub.startDate = newStartDate;
-            existingSub.endDate = newEndDate;
-            existingSub.isActive = true;
-            existingSub.status = "active";
-
-            await existingSub.save();
-
-            return res.status(200).json({ message: "Subscription renewed successfully", subscription: existingSub });
-        }
-
-        const plan = await Plan.findById(planId);
-        if (!plan) return res.status(400).json({ message: "Plan not found or inactive" });
-
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + plan.durationDays);
-
-        const code = generateActivationCode();
-
-        const subscription = new Subscription({
-            userId,
-            planId,
-            startDate,
-            endDate,
-            code,
-            isActive: true,
-            status: "active"
-        });
-
-        await subscription.save();
-
-        return res.status(201).json({ message: "Subscription purchased successfully", subscription });
-    } catch (error) {
-        console.error("Error in purchaseSubscription:", error);
-        res.status(500).json({ error: "Internal server error" });
+    // 2. Check plan exists in this product
+    const selectedPlan = product.plans.find(
+      (p) => p.name.toLowerCase() === planName.toLowerCase()
+    );
+    if (!selectedPlan) {
+      return res
+        .status(400)
+        .json({ message: "Selected plan not found for this product" });
     }
+
+    // 3. Prevent duplicate ownership of same plan
+    const existing = await Subscription.findOne({
+      userId,
+    });
+    if (existing) {
+      return res
+        .status(400)
+        .json({ message: "You already own a plan" });
+    }
+
+    // 4. Calculate support end date (+3 months)
+    const supportEndDate = new Date();
+    supportEndDate.setMonth(supportEndDate.getMonth() + 3);
+    
+    const lifetime = selectedPlan.duration === "Lifetime" ? true : false
+
+    const successToken = crypto.randomBytes(20).toString("hex");
+    
+    // 5. Create subscription
+    const subscription = new Subscription({
+      userId,
+      productId,
+      planName: selectedPlan.name,
+      lifetime,
+      supportEndDate,
+      successToken,
+    });
+
+    await subscription.save();
+    res
+      .status(201)
+      .json({ message: "Product purchased successfully", subscription, successToken });
+  } catch (error) {
+    console.error("Error in purchaseSubscription:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ♻️ Renew support (adds +3 months to supportEndDate)
+export const renewSupport = async (req, res) => {
+  try {
+    const { subscriptionId } = req.body;
+    const subscription = await Subscription.findById(subscriptionId).populate("productId");
+    if (!subscription)
+      return res.status(404).json({ message: "Subscription not found" });
+
+    let newSupportEndDate = new Date(subscription.supportEndDate);
+    if (newSupportEndDate < new Date()) {
+      newSupportEndDate = new Date();
+    }
+    newSupportEndDate.setMonth(newSupportEndDate.getMonth() + 3);
+
+    subscription.supportEndDate = newSupportEndDate;
+    await subscription.save();
+
+    res.json({ message: "Support renewed for 3 months", subscription });
+  } catch (error) {
+    console.error("Error in renewSupport:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getSubscriptionByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Find subscription by token and user
+    const subscription = await Subscription.findOne({
+      userId: req.userId,
+      successToken: token,
+    }).populate("productId");
+
+    if (!subscription) {
+      return res.status(404).json({ message: "Invalid or expired token" });
+    }
+
+    // Clear token so it can't be reused
+    subscription.successToken = undefined;
+    await subscription.save();
+
+    res.json(subscription);
+  } catch (error) {
+    console.error("Error in getSubscriptionByToken:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 
-export const renewSubscription = async (req, res) => {
-    try {
-        const { subscriptionId } = req.body;
-
-        const subscription = await Subscription.findById(subscriptionId).populate("planId");
-        if (!subscription) return res.status(404).json({ message: "Subscription not found" });
-
-        const plan = subscription.planId;
-        if (!plan) return res.status(400).json({ message: "Plan details missing for Subscription" });
-
-        const activationCode = generateActivationCode();
-
-        let newStartDate = subscription.startDate;
-        let newEndDate = subscription.endDate;
-
-        if (new Date() > subscription.endDate) {
-            newStartDate = new Date();
-            newEndDate = new Date();
-            newEndDate.setDate(newEndDate.getDate() + plan.durationDays);
-        } else {
-            newEndDate = new Date(subscription.endDate);
-            newEndDate.setDate(newEndDate.getDate() + plan.durationDays);
-        }
-
-        subscription.code = activationCode;
-        subscription.startDate = newStartDate;
-        subscription.endDate = newEndDate;
-        subscription.isActive = true;
-        subscription.status = "active";
-
-        await subscription.save();
-
-        return res.json({ message: "Subscription renewed successfully", subscription });
-    } catch (error) {
-        console.error("Error in renewSubscription:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-export const getUserSubscription = async (req, res) => {
-    try {
-        const userId = req.userId;
-        const subscription = await Subscription.findOne({ userId, isActive: true })
-            .populate("planId");
-
-        if (!subscription) {
-            return res.json(null);
-        }
-
-        return res.json(subscription);
-    } catch (error) {
-        console.error("Error in getUserSubscription:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-
-export const getAllSubscriptions = async (req, res) => {
-    try {
-        const subscriptions = await Subscription.find()
-            .populate("userId", "name email")
-            .populate("planId", "name price durationDays")
-            .sort({ createdAt: -1 });
-
-        return res.json(subscriptions);
-    } catch (error) {
-        console.error("Error in getAllSubscriptions:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
+// 👤 Get user’s subscriptions
+export const getUserSubscriptions = async (req, res) => {
+  try {
+    const subscriptions = await Subscription.findOne({ userId: req.userId }).populate("productId");
+    res.json(subscriptions);
+  } catch (error) {
+    console.error("Error in getUserSubscriptions:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };
