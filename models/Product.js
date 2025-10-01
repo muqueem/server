@@ -15,6 +15,7 @@ const productSchema = new mongoose.Schema({
     legal: String,
     backtesting: String,
     image: String,
+    itemsIncluded: [String],
     gallery: [String],
     popular: {
         type: Boolean,

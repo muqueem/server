@@ -177,5 +177,45 @@ export const products = [
             "/images/flashedge-scalper-x-ea/backtesting2.png",
             "/images/flashedge-scalper-x-ea/backtesting3.png"
         ]
+    },
+    {
+        "slug": "quantum-all-in-one-combo",
+        "name": "Quantum All-in-One Combo Pack",
+        "popular": true,
+        "description": "Special bundle that includes all 5 premium EAs (ATR Grid, FVG Executor, Session Sniper, Dual Force Engine, FlashEdge Scalper) in a single discounted package.",
+        "features": [
+            "Includes all 5 Quantum Rise Capital expert advisors",
+            "One purchase, one license covering every EA",
+            "Lifetime updates & support included",
+            "Huge cost savings vs buying separately"
+        ],
+        "plans": [
+            {
+                "name": "Lifetime Plan",
+                "price": 2916,
+                "currency": "USD",
+                "duration": "Lifetime",
+                "features": [
+                    "Access to all 5 expert advisors",
+                    "1 account license",
+                    "Lifetime updates & support"
+                ]
+            }
+        ],
+        "legal": "Quantum Rise Capital – End-User License Agreement (EULA) & Purchase Terms\nFor All-in-One Combo Pack\nNon-exclusive, non-transferable license for personal/internal use. Redistribution, resale, or reverse-engineering prohibited. Intellectual property remains with Quantum Rise Capital. Software provided 'as is' without guarantees of profitability. All sales are final. Governed by UAE law.",
+        "backtesting": "This combo includes backtested results for all 5 EAs. See individual product pages for full performance reports.",
+        "image": "/images/combo/logo.png",
+        // "gallery": [
+        //     "/images/combo/preview1.png",
+        //     "/images/combo/preview2.png"
+        // ],
+        "itemsIncluded": [
+            "quantum-atr-grid-ea",
+            "quantum-fvg-executor-ea",
+            "session-sniper-x-ea",
+            "dual-force-engine-ea",
+            "flashedge-scalper-x-pro-ea"
+        ]
     }
+
 ]
