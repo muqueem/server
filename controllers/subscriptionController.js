@@ -36,7 +36,7 @@ export const purchaseSubscription = async (req, res) => {
     // 3. Prevent duplicate subscription
     const existing = await Subscription.findOne({ userId });
     if (existing) {
-      return res.status(400).json({ message: "You already own this plan" });
+      return res.status(400).json({ message: "You already own a plan" });
     }
 
     // 4. Create Stripe Checkout session
