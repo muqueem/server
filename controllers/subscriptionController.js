@@ -1,107 +1,147 @@
-// controllers/subscriptionController.js
+import dotenv from "dotenv";
+dotenv.config(); // ✅ Load .env here in case this is imported first
+
 import crypto from "crypto";
 import Subscription from "../models/Subscription.js";
 import Product from "../models/Product.js";
+import Stripe from "stripe";
 
-// 💳 Purchase a product plan (lifetime + 3 months support)
+// ✅ Use Stripe key safely
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeKey) {
+  console.error("❌ STRIPE_SECRET_KEY not found in environment");
+  process.exit(1);
+}
+
+const stripe = new Stripe(stripeKey);
+
+// 💳 Start Stripe checkout for subscription
 export const purchaseSubscription = async (req, res) => {
   try {
-    const { productId, planName } = req.body; // planName now required
+    const { productId, planName } = req.body;
     const userId = req.userId;
 
     // 1. Find product
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    // 2. Check plan exists in this product
+    // 2. Check plan exists
     const selectedPlan = product.plans.find(
       (p) => p.name.toLowerCase() === planName.toLowerCase()
     );
     if (!selectedPlan) {
-      return res
-        .status(400)
-        .json({ message: "Selected plan not found for this product" });
+      return res.status(400).json({ message: "Plan not found for this product" });
     }
 
-    // 3. Prevent duplicate ownership of same plan
-    const existing = await Subscription.findOne({
-      userId,
-    });
+    // 3. Prevent duplicate subscription
+    const existing = await Subscription.findOne({ userId, productId });
     if (existing) {
-      return res
-        .status(400)
-        .json({ message: "You already own a plan" });
+      return res.status(400).json({ message: "You already own this plan" });
     }
 
-    // 4. Calculate support end date (+3 months)
-    const supportEndDate = new Date();
-    supportEndDate.setMonth(supportEndDate.getMonth() + 3);
-    
-    const lifetime = selectedPlan.duration === "Lifetime" ? true : false
-
-    const successToken = crypto.randomBytes(20).toString("hex");
-    
-    // 5. Create subscription
-    const subscription = new Subscription({
-      userId,
-      productId,
-      planName: selectedPlan.name,
-      lifetime,
-      supportEndDate,
-      successToken,
+    // 4. Create Stripe Checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment", // one-time purchase
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: selectedPlan.currency.toLowerCase(),
+            product_data: {
+              name: `${product.name} - ${selectedPlan.name}`,
+            },
+            unit_amount: selectedPlan.price * 100, // cents
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        userId: userId,
+        productId: product._id.toString(),
+        planName: selectedPlan.name,
+      },
+      success_url: `${process.env.CLIENT_URL}/success/{CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL}/cancel`,
     });
 
-    await subscription.save();
-    res
-      .status(201)
-      .json({ message: "Product purchased successfully", subscription, successToken });
+    res.json({ url: session.url });
   } catch (error) {
     console.error("Error in purchaseSubscription:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
+
 // ♻️ Renew support (adds +3 months to supportEndDate)
 export const renewSupport = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
     const subscription = await Subscription.findById(subscriptionId).populate("productId");
-    if (!subscription)
+
+    if (!subscription) {
       return res.status(404).json({ message: "Subscription not found" });
-
-    let newSupportEndDate = new Date(subscription.supportEndDate);
-    if (newSupportEndDate < new Date()) {
-      newSupportEndDate = new Date();
     }
-    newSupportEndDate.setMonth(newSupportEndDate.getMonth() + 3);
 
-    subscription.supportEndDate = newSupportEndDate;
-    await subscription.save();
+    // Find the plan used in this subscription
+    const plan = subscription.productId.plans.find(
+      (p) => p.name.toLowerCase() === subscription.planName.toLowerCase()
+    );
 
-    res.json({ message: "Support renewed for 3 months", subscription });
+    if (!plan) {
+      return res.status(400).json({ message: "Plan not found for renewal" });
+    }
+
+    // 💰 Renewal price from plan.renew
+    const renewalPrice = plan.renew;
+    const currency = plan.currency.toLowerCase();
+
+    // ✅ Create Stripe Checkout session
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency,
+            product_data: {
+              name: `${subscription.productId.name} - Support Renewal`,
+            },
+            unit_amount: renewalPrice * 100, // cents
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        subscriptionId: subscription._id.toString(),
+        type: "renewal",
+      },
+      success_url: `${process.env.CLIENT_URL}/my-account/my-subscription`,
+      cancel_url: `${process.env.CLIENT_URL}/cancel`,
+    });
+
+    res.json({ url: session.url });
   } catch (error) {
-    console.error("Error in renewSupport:", error);
+    console.error("❌ Error in renewSupport:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     res.status(500).json({ error: "Internal server error" });
   }
 };
 
+
 export const getSubscriptionByToken = async (req, res) => {
   try {
-    const { token } = req.params;
+    const { sessionId } = req.params;
 
-    // Find subscription by token and user
     const subscription = await Subscription.findOne({
-      userId: req.userId,
-      successToken: token,
+      stripeSessionId: sessionId,
     }).populate("productId");
 
     if (!subscription) {
-      return res.status(404).json({ message: "Invalid or expired token" });
+      return res.status(404).json({ message: "Subscription not found" });
     }
-
-    // Clear token so it can't be reused
-    subscription.successToken = undefined;
-    await subscription.save();
 
     res.json(subscription);
   } catch (error) {

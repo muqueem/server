@@ -32,6 +32,10 @@ const productSchema = new mongoose.Schema({
                 type: Number,
                 required: true
             },
+            renew: {
+                type: Number,
+                required: true
+            },
             currency: {
                 type: String,
                 default: "USD"

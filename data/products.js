@@ -16,13 +16,14 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 899,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [
                     "Full version access",
                     "1 account license",
                     "Lifetime updates & support"
-                ]
+                ],
             }
         ],
         "legal": "Quantum Rise Capital – End-User License Agreement (EULA) & Purchase Terms\nFor Quantum ATR Grid EA\nNon-exclusive, non-transferable license for personal/internal use. Redistribution, resale, or reverse-engineering prohibited. Intellectual property remains with Quantum Rise Capital. Software provided 'as is' without guarantees of profitability. All sales are final. Governed by UAE law.",
@@ -51,6 +52,7 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 749,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [
@@ -86,6 +88,7 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 699,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [
@@ -124,6 +127,7 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 299,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [
@@ -160,6 +164,7 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 999,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [
@@ -193,6 +198,7 @@ export const products = [
             {
                 "name": "Lifetime Plan",
                 "price": 2916,
+                "renew": 30,
                 "currency": "USD",
                 "duration": "Lifetime",
                 "features": [

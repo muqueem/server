@@ -31,6 +31,10 @@ const subscriptionSchema = new mongoose.Schema({
   },
   successToken: {
     type: String
+  },
+  stripeSessionId: {
+    type: String,
+    unique: true
   }
 }, { timestamps: true });
 
