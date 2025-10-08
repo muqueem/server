@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-    origin: ['https://muqueem.works.knothost.com'], // your frontend URL
+    origin: ['https://quantumrisecapital.ae'], // your frontend URL
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
